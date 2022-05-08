@@ -9,9 +9,9 @@ const res = require("express/lib/response");
         {
         host: 'localhost',
         // MySQL username --USE DOTENV TO HIDE VARIABLES *TODO*
-        user: 'root',
+        user: '',
         //  Add MySQL password here --USE DOTENV TO HIDE VARIABLES *TODO*
-        password: 'xZaO132x$#!',
+        password: '',
         database: 'corporate_db'
         },
         console.log(`Connected to the company_db database.`)
