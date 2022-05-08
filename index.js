@@ -1,7 +1,8 @@
 const inquirer = require("inquirer"); //inquirer package -npm i inquirer
 const mysql = require('mysql2'); //mysql2package -npm i mysql2
 const consoleTable = require('console.table') //package for npm i console.table
-const dotenv = require('dotenv') // npm i dotenv --save
+const dotenv = require('dotenv'); // npm i dotenv --save
+const res = require("express/lib/response");
 
 // Database Connection -------------------------------------------------------------------------------------------------------------------------------------------------------------
     const db = mysql.createConnection(
@@ -10,8 +11,8 @@ const dotenv = require('dotenv') // npm i dotenv --save
         // MySQL username --USE DOTENV TO HIDE VARIABLES *TODO*
         user: 'root',
         //  Add MySQL password here --USE DOTENV TO HIDE VARIABLES *TODO*
-        password: '',
-        database: 'company_db'
+        password: 'xZaO132x$#!',
+        database: 'corporate_db'
         },
         console.log(`Connected to the company_db database.`)
     );
@@ -27,7 +28,7 @@ const dotenv = require('dotenv') // npm i dotenv --save
             type: 'list',
             message: "Big-Broth0r-Employee-Tracker V1.0.1: Select an option to interact with the database",
             name: 'questions',
-            choices: ['View all departments','View all employees','View all roles','Add a department','Add a role','Add an employee','Update an employee role', 'Quit']
+            choices: ['View all departments','View all employees','View all roles','Add a department','Add a role','Add an employee','Update an employee role']
             },
         
         ])
@@ -57,10 +58,8 @@ const dotenv = require('dotenv') // npm i dotenv --save
                 {
                     addEmployee();
                 }
-                else if (response.question == 'Update an employee role'){
+                else {
                     updateRole();
-                } else {
-                    return 'Goodbye!'
                 }
 
             // console.log(response);
@@ -83,15 +82,14 @@ const dotenv = require('dotenv') // npm i dotenv --save
     
         // Displays all roles with job title, role id (job specific), department id (department employee belongs to) and salary
         function viewallRoles(){
-            const sql=`SELECT r.title,r.salary,d.name,d.id FROM role AS r JOIN department AS d ON d.id = r.department_id`;
-        db.query(sql,(err,result)=>{
-            if (err)
-                throw err
-            
-           console.table(result);
-           question();
-        })
-        }
+            db.query(`SELECT * FROM roles`, function (err, results) {
+                if (err) {
+                    console.log(err);
+                };
+                console.table(results);
+                promptUser();
+            });
+        };
     
         // Displays a table showing employees
         function viewallEmployees(){
@@ -107,126 +105,143 @@ const dotenv = require('dotenv') // npm i dotenv --save
     
         //Prompts user to enter department name and adds department to database
         function addDepartments(){
-            inquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'deptName',
-                    message: 'What is the name of the department you wish to add?'
-                }
-            ]) 
-            .then((response) => {
-               
-                const sql=`INSERT INTO department (name) VALUES (?)`; //References name from department in schema.sql
-                db.query(sql,response.deptName,(err,result)=>{
-                    if (err)
-                    throw err
-                    console.table(result);
-                    question();
-              });  
-        
-            });  
-           
+            inquirer.prompt(
+                [
+                    {
+                        message: 'Enter department name',
+                        name: 'dept_name'
+                    }
+                ]
+            ).then((answers) => {
+                db.query(
+                    'INSERT INTO departments (name) VALUES (?)',
+                    [answers.dept_name],
+                    (err, results) => {
+                        if (err) throw err
+                        console.log(results)
+                        promptUser();
+                    }
+                );
+            }
+            );
         }
-    
         //Prompts user to enter name, salary, and department for the role and adds role to the database
         function addRole(){
-            inquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'title',
-                    message: 'What is the title of the role you wish to add?'
-                },
-                {
-                    type: 'input',
-                    name:'salary',
-                    message: 'what is the salary of the role ?'
-                },
-                {
-                    type: 'input',
-                    name: 'department_id',
-                    message: 'Which department does the role belong to ?'
-                    //Choices:     //department name(viewalldepartments)
-                }
-            ]) 
-            .then((response) => {
-               
-                const sql=`INSERT INTO role SET ? `;//use name from role in schema.sql/seeds(dept id ,title ,salary)
-                db.query(sql,response,(err,result)=>{
-                    if (err)
-                    throw err
-                    console.log(result);
-                    question();
-              }); 
+            db.query(
+                `SELECT id AS value, name AS name FROM departments`, (err, departments) => {
+                    if (err) console.log(err);
         
-            });  
+                    inquirer.prompt(
+                        [
+                            {
+                                message: 'Enter role title',
+                                name: 'title'
+                            },
+                            {
+                                message: 'Enter salary amount',
+                                name: 'salary'
+                            },
+                            {
+                                message: 'Choose department',
+                                type: 'rawlist',
+                                name: 'dept',
+                                choices: departments
+                            },
+                        ]
+                    ).then((answers) => {
+                        db.query(
+                            'INSERT INTO roles (title, salary, department_id) VALUES (?,?,?)',
+                            [answers.title, answers.salary, answers.dept],
+                            (err, results) => {
+                                if (err) console.log(err);
+                                console.log(answers);
+                                promptUser();
+                            }
+                        );
+                    }
+                    )
+                });
         }
     
         // Prompts user to enter employee's first name, last name, role and manager, then adds employee to the database
-        function addEmployee(){
-            inquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'first_name',
-                    message: 'Enter the first name of this employee:'
-                },
-                {
-                    type: 'input',
-                    name: 'last_name',
-                    message: 'Enter the last name of this employee:'
-                },
-                {
-                    type: 'input',
-                    name: 'role_id',
-                    message: 'What is the role of this employee?'
-                  //Choices:         //role title display-
-                },
-                {
-                    type: 'input',
-                    name: 'manager_id' ,
-                    message: 'Who is the manager of this employee?'
-                   //Choices:            //none,display employee first and last name
-                }
-            ])
-            .then((response) => {
-               
-                const sql=`INSERT INTO employee SET ?`;//use name from role in schema.sql/seeds(first name, lastname,role id, manager id)
-                db.query(sql,response,(err,result)=>{
-                    if (err)
-                    throw err
-                    console.log(result);
-                    question();
-              });  
-            });  
+        function addEmployee () {
+            db.query(
+                `SELECT id AS value, title AS name FROM roles`, (err, roles) => {
+                    if (err) console.log(err);
+        
+                    inquirer.prompt(
+                        [
+                            {
+                                message: 'Enter first name',
+                                name: 'first_name'
+                            },
+                            {
+                                message: 'Enter last name',
+                                name: 'last_name'
+                            },
+                            {
+                                message: 'Choose role',
+                                type: 'rawlist',
+                                name: 'role',
+                                choices: roles
+                            },
+                        ]
+                    ).then((answers) => {
+                        db.query(
+                            'INSERT INTO employees (first_name, last_name, role_id) VALUES (?,?,?)',
+                            [answers.first_name, answers.last_name, answers.role],
+                            (err, results) => {
+                                if (err) console.log(err);
+                                console.log(answers);
+                                promptUser();
+                            }
+                        );
+                    }
+                    )
+                });
         }
     
         // Prompts user to select an employee to update role and add that information to the database
-        function updateRole(){
-            inquirer.prompt([
-                {
-                    type: 'input',
-                    name: 'employee',
-                    message: 'Which employee role do you wish to update?'
-                   //Choice:                   //need emp name 
-                },
-                {
-                    type: 'input',
-                    name:  "role"   ,
-                    message: 'Which role do you wish to assign the selected employee ?'
-                   //Choices:                    //need role title 
+        function updateRole() {
+            let roleResults;
+            db.query(`SELECT id as value, title AS name FROM roles`, (err, roles) =>{
+                if (err) {
+                    console.log(err);
+                    return;
                 }
-         
-            ])
+                roleResults = roles;
+            });
+            db.query(
+                `SELECT id, CONCAT(first_name, ' ', last_name) AS name FROM employees`, (err, employees) => {
+                    if (err) console.log(err);
+                    inquirer.prompt(
+                        [
+                            {
+                                message: 'Choose employee',
+                                type: 'rawlist',
+                                name: 'employees',
+                                choices: employees
+                            },
+                            {
+                                message: 'Choose new role',
+                                type: 'rawlist',
+                                name: 'role',
+                                choices: roleResults
+                            },
+                        ]
+                    ).then((answers) => {
+                        var employeeName = answers.employees.split(' ');
+                        var employeeFirstName = employeeName[0];
+                        var employeeLastName = employeeName[employeeName.length - 1];
         
-            .then((response) => {
-               
-                const sql=`UPDATE employee SET role_id = ? WHERE id = ?`;
-                db.query(sql,[response],(err,result)=>{
-                    if (err)
-                    throw err
-                    console.log(result);
-                    question(); 
-              });  
-            }); 
-           
-        }
-    
+                        db.query(
+                            'UPDATE employees SET role_id = ? WHERE first_name = ? AND last_name = ?',
+                            [answers.role, employeeFirstName, employeeLastName],
+                            (err, results) => {
+                                if (err) console.log(err);
+                                console.log(results);
+                                promptUser();
+                             });
+                        })
+                     })
+        };
